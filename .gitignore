@@ -3,3 +3,4 @@
 *.tif
 *.jp2
 get_data/
+.Rproj.user

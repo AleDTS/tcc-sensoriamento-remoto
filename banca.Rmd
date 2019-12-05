@@ -1,6 +1,5 @@
 ---
-title: APLICAÇÃO DE MÉTODOS DE APRENDIZADO DE MÁQUINA PARA CLASSIFICAÇÃO DE IMAGENS
-  DE SENSORIAMENTO REMOTO POR SATÉLITES
+title: APLICAÇÃO DE MÉTODOS DE APRENDIZADO DE MÁQUINA PARA CLASSIFICAÇÃO DE USO E COBERTURA DA TERRA EM IMAGENS DE SENSORIAMENTO REMOTO
 author: "Alexandre de Tomy Silva"
 date: "Outubro/2019"
 output:
@@ -34,107 +33,157 @@ knitr::opts_chunk$set(echo = FALSE,
 
 # Introdução
 
-## Observação da Terra
 
-- Dados gerados pela Observação da Terra
-  - Visão multitemporal
-  - Monitoramento dos recursos terrestres
+## Introdução | *Sensoriamento Remoto*
+
+- Imagens geradas por satélites
+
+  - Observação da terra: monitoramento dos recursos
+
+  - Coleta, distribuição e análise
+
+
+## Intrudução | *Aprendizado de Máquina*
+
+- Aprendizado de máquina
+
+  - Reconhecimento de padrões de uso e cobertura da terra
+
+  - Resultados como base para outras aplicações
+
+
+## Introdução | *Dados e ferramentas*  
+
+- Disponibilidade
+
+  - Ambientes SIG integrados
+
+  - Computação em núvem: processamento, armazenamento e distribuição
+
+  - Reprodutibilidade
+
+
+## Objetivo
+
+- Desenvolvimento e estudo de modelos preditivos de classificação de imagens de sensoriamento remoto
+
+  - Dados: **MapBiomas** e **Sentinel-2/MSI**
+
+  - Área de interesse: Região do município de **Bauru**
+
+  - Ferramentas: Linguagem **R** e **Google Earth Engine**
+
+  - Classes: padrões de **uso e cobertura terrestre **
+
+  - Algoritmos: **Máquina de Vetores Suporte** (linear com regularização e com função de base radial como núcleo) e **Florestas Aleatórias**
+
+
+
+# Fundamentação Teórica
+
 
 ## Sensoriamento Remoto
 
 > Sensoriamento  remoto  é  uma  técnica  de  obtenção  de  imagens  dos  objetos  da  superfície  terrestre  sem  que  haja  um  contato  físico  de  qualquer  espécie entre o sensor e o objeto.
 
-- Coleta, distribuição e análise
-- Mudanças na ocupação do solo afetam o clima
-
-## Classificação de Imagens
-
-- Aprendizado de máquina para reconhecimento de padrões de classes de uso e cobertura da terra
-  - Não é necessário conhecimento a priori sobre distribuição dos dados
-  - Base para outras aplicações
-
-## Disponibilidade dos dados
-
-- Demanda para processamento e armazenamento
-- Plataformas de computação em nuvem como solução
-  - Monitoramento em escala global
-  - Problemas de reprodutibilidade
-
-## Objetivo
-
-- Desenvolvimento e estudo de modelos preditivos de classificação de imagens de sensoriamento remoto
-  - Dados: **MapBiomas** e **Sentinel-2/MSI**
-  - Área de interesse: Região do município de **Bauru**
-  - Ferramentas: Linguagem **R** e **Google Earth Engine**
-  - Classes: padrões de **uso e cobertura terrestre **
-  - Algoritmos: **Máquina de Vetores Suporte** (linear com regularização e com função de base radial como núcleo) e **Florestas Aleatórias**
-
-# Fundamentação Teórica
-
-## Sensoriamento Remoto
-
 - Presença de um **alvo** (superfície terrestre) que interage com a **energia** (radiação) provinda de uma **fonte** (luz solar), gerando uma resposta que é captada por um **sensor** (acoplado em um satélite).
+
 
 ## Aprendizado de máquina
 
 - Aprendizado de Máquina é uma área da inteligência artificial que se refere ao desenvol-vimento de métodos que otimizam sua performance iterativamente aprendendo com dados
 
-## Aprendizado de máquina | 
+
+## Aprendizado de máquina | *Sensoriamento Remoto*
 
 - Problema de **classificação** pixel a pixel, aplicando métodos **supervisionados** e **não paramétricos** 
+
+- Classificadores paramétricos como máxima verissimilhança são muito utilizados
+
+- Porém, os não paramétricos possuem melhores resultados
+
 
 ## Aprendizado de máquina | *Support Vector Machines*
 
 - Achar o **limite de decisão** que separa as classes (binário)
+
 - Projeção do espaço de características para uma dimensão maior
+
   - Funções de núcleo (polinomial, lineares, etc)
+
 
 ## Aprendizado de máquina | *Decision Trees*
 
 - "Cortes" recursivos e repetidos
+
   - Cada corte gera um "tronco"
+
   - "Folhas" são as classes
+
 
 ## Aprendizado de máquina | *Random Forests*
 
 - Conjunto de Árvores de Decisões
+
 - Classe será definida pelo "voto" da maioria das árvores da floresta
+
   - Previne problema de **alto viés**
+
 - Cada árvore é treinada com um único subconjunto de teste e variáveis
+
   - Uma árvore será menos precisa, porém, menos correlacionada com as outras
+
+
 
 # Metodologia
 
-## Dados | MapBiomas
+
+## Dados | *MapBiomas*
 
 >O projeto MapBiomas é uma iniciativa multi-institucional para gerar mapas anuais de cobertura e uso do solo a partir de processos de classificação automática aplicada a imagens de satélite.
+
 
 ## Dados | Sentinel-2/MSI
 
 - Programa Sentinel
+
   - Resolução espacial média (10-30m)
+
   - Sensor multiespectral
+
   - Dados abertos desde 2013
 
-## Ambientes | R
+
+## Ambientes | *R*
 
 - Linguagem de paradigmas funcional e orientado a objeto
+
 - Muito utlizada para análises estatísticas
+
 - Ambiente integrado com bibliotecas de dados geoespaciais
+
 - Forte documentaçãoo
+
 
 ## Ambientes | *Google Earth Engine*
 
 - Ambiente de computação em núvem
+
 - Diversas coleções de dados de satélite
+
 - Processamento extremamente rápido
+
 - Utilizado pelo MapBiomas
+
 
 ## Etapas
 
 ![]("./monografia/rascunhos/figs/etapas.png")
 
+
+
 # Desenvolvimento
+
 
 ## Aquisicao dos Dados | Satélite Sentinel-2
 
