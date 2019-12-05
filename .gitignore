@@ -1,0 +1,5 @@
+.R*
+.cache/
+*.tif
+*.jp2
+get_data/

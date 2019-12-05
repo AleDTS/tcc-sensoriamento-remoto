@@ -1,0 +1,290 @@
+\chapter{Fundamentação teórica}\label{fundamentacao-teorica}
+
+\section{Geotecnologias}\label{geotecnologias}
+
+\begin{citacao}
+"As geotecnologias são o conjunto de tecnologias para coleta,
+processamento, análise e oferta de informação com referência geográfica." \cite{rosa2005geotecnologias}
+\end{citacao}
+
+Podem ser caracterizadas geotecnologias: \sigla{SIG}{Sistemas de Informação
+Geográfica}, cartografia digital, Sensoriamento Remoto,
+\sigla{GPS}{Sistema de Posicionamento Global} e a topografia. Geoprocessamento,
+por sua vez, é um conceito mais abrangente e representa qualquer tipo de
+processamento de dados georreferenciados \cite{rosa2005geotecnologias}. 
+
+Segundo \cite{rosa2005geotecnologias}, um \acs{SIG} se refere a um conjunto de ferramentas computacionais que integra dados, pessoas e instituições e que torna possível a coleta, armazenamento, processamento, análise e oferta de informação georreferenciada.
+
+Os \acs{SIG}s se desenvolveram consideravelmente durante as últimas décadas.
+Inicialmente, nos anos 80, cada sistema tinha um banco de dados próprio
+e o processamento era feito isoladamente, em softwares de código
+fechado. Nos anos 90, formatos de arquivos surgiram, o que facilitou a
+intercambialidade entre os programas disponíveis. A partir de 2000,
+surgiu a biblioteca \sigla{GDAL}{\emph{Geospatial Data Abstraction Layer}},
+feita para ler e escrever dados geoespaciais. De 2010 até hoje em dia,
+os ambientes de computação em nuvem surgiram a fim de resolverem o
+problema de análise, mas novamente de maneira isolada, gerando problemas
+de reprodutibilidade. \cite{openeo}
+
+\subsection{Dados geoespaciais}\label{dados-geoespaciais}
+
+São considerados dados geoespaciais, dados georreferenciados, ou ainda
+dados espaciais, os dados que possuem uma localização definida.
+Computacionalmente, são representados por: pontos, que interligados
+podem formar linhas e polígonos que representam um objeto geográfico e
+são chamados de \textbf{dados vetoriais}; por matrizes de pontos,
+divididas em células de tamanhos iguais, que são os \emph{pixels} de uma
+imagem, denominados como \textbf{dados \emph{raster}}; ou ainda com
+metadados, que são textos, números e símbolos armazenados em tabelas e
+vinculados aos dados que possuem referência espacial. Todo dado espacial
+é composto por um \sigla{SRC}{Sistema de Referência de Coordenadas}, que pode ser geográfico (esférico ou geodésico, ou seja, no formato da Terra) ou projetado (em duas dimensões).\cite{geocompr,ibge-livro}
+
+\section{Sensoriamento Remoto}\label{sensoriamento-remoto}
+
+De maneira objetiva, sensoriamento remoto (SR) pode ser definido como:
+
+\begin{citacao}
+(\ldots{}) uma ciência que visa o desenvolvimento da obtenção de
+imagens da superfície terrestre por meio da detecção e medição
+quantitativa das respostas das interações da radiação eletromagnética
+com os materiais terrestres \cite[p. 3]{meneses2012introduccao}
+\end{citacao}
+
+Por essa definição, tem-se um sistema onde um \textbf{alvo} localizado
+na superfície da terra interage com a \textbf{energia} proveniente de
+uma \textbf{fonte} (como a luz solar) gerando uma resposta que é captada
+por um sensor (geralmente um satélite) e que por sua vez é processada e
+traduzida como uma \textbf{imagem}.
+
+\subsection{Energia}\label{energia}
+
+A \sigla{REM}{Radiação Eletromagnética} é caracterizada pela dualidade de
+comportamento na natureza: é ao mesmo tempo uma forma de onda e uma
+forma de energia que se propaga pelo espaço vazio. Segundo o modelo
+ondulatório, a radiação é definida como uma forma de onda propagada a
+partir da perturbação dos campos elétrico e magnético, gerados por uma
+partícula eletricamente carregada. As características das imagens de Sensoriamento Remoto
+são definidas pela intensidade com que um objeto reflete a \acs{REM} em razão
+da textura de sua superfície e do comprimento de onda; essa interação é
+denominada \textbf{interação macroscópica}. Já o modelo corpuscular,
+define a \acs{REM} como uma forma dinâmica de energia que se manifesta por
+suas interações com a matéria. As trocas de energia ocorrerão somente se
+a quantidade de energia da \acs{REM} for igual à necessária para promover uma
+mudança nos níveis de energia dos átomos ou moléculas, caracterizando a
+\textbf{interação microscópica}. \cite{meneses2012introduccao}
+
+A partir desses modelos, define-se a energia transportada $E$, o
+comprimento de onda $\lambda$ relacionados pela equação: 
+\begin{equation}
+E = \frac{hc}{\lambda}
+\end{equation}Onde $h$ é constante de Planck ($6,624\times10^{-34}$ Joules.seg) e
+$c$ a velocidade da luz de aproximadamente $300.000$ km/s
+
+\subsubsection{Interferências
+Atmosféricas}\label{interferencias-atmosfericas}
+
+O nosso sistema solar tem como o próprio Sol a maior fonte de energia
+que chega até a Terra, que por sinal também emite \acs{REM}, em menor
+quantidade mas que pode ser detectada por sensores. No caso do Sensoriamento Remoto
+orbital (ou seja, via satélite), a atmosfera é opaca à radiação para
+vários intervalos de comprimentos de onda. Isso ocorre devido aos
+efeitos de \textbf{absorção} e \textbf{espalhamento} causados pela
+interferência da interação entre a \acs{REM} e as partículas e moléculas
+presentes na atmosfera terrestre. \cite{meneses2012introduccao}
+
+\subsubsection{Espectro
+Eletromagnético}\label{espectro-eletromagnetico}
+
+O espectro eletromagnético representa a distribuição da \acs{REM} por
+regiões espectrais conhecidas pelo homem. Da luz visível, por exemplo,
+cada cor tem seu comprimento de onda, portanto as imagens de SR são
+definidas em intervalos (ou \textbf{bandas}). Lembrando que a cor
+``real'' dos alvos não é a mesma capturados pelos sensores, devido às
+interferências explicadas logo acima. \cite{meneses2012introduccao}
+
+Os objetos (ou \textbf{alvos}) presentes na superfície terrestre
+refletem, absorvem e transmitem radiação de acordo com a característica
+de seu material de composição. As variações da energia refletida podem
+ser representadas através de curvas, que distinguem os alvos. A
+representação destes nas imagens vão variar, para cada banda, do branco
+(ou seja, refletem mais energia) ao preto (refletem pouca energia).
+
+\subsection{Sensores}\label{sensores}
+
+O sensor é responsável por captar e converter para valores digitais a
+intensidade da radiância, ou seja, o fluxo radiante refletido pelo
+elemento da superfície. As imagens são capturadas e posteriormente pré
+processadas, e nesse processo geralmente são convertidos os valores da
+radiância para a reflectância, obtida pela divisão entre a radiância e a
+irradiância, que por sua vez representa a densidade do fluxo radiante
+solar incidente por área da superfície. O tipo mais comum de sensor, é o
+multiespectral. São sensores capazes de obter múltiplas imagens
+simultâneas da superfície em diversos comprimentos de ondas diferentes. \cite{meneses2012introduccao}
+
+\subsubsection{Resolução}\label{resolucao}
+
+As características de uma imagem obtida por sensoriamento remoto podem
+ser resumidas em quatro resoluções: espacial (ou geométrica), temporal,
+espectral e radiométrica. A \textbf{resolução espacial}, dada em metros,
+é a área representada por um pixel na imagem final, ou seja, se é de 30
+metros, significa que a largura de um pixel representa um espaço de 30
+metros na superfície. A \textbf{resolução espectral} é definida por três
+características: o número de bandas, a largura do comprimento de onda de
+cada banda, e onde cada uma está posicionada no espectro. A largura da
+banda, vai definir por exemplo as feições de absorção de cada material,
+para aquela região do espectro. A intensidade da radiância da área de
+cada pixel é medida pela \textbf{resolução radiométrica}. O sinal que o
+sensor recebe é quantizado em valores digitais (\emph{bits}), ou seja,
+essa resolução definirá quantos tons de cinza uma imagem consegue
+representar. Por último, a \textbf{resolução temporal} refere-se a
+frequência que um sensor revisita uma área, gerando imagens periódicas
+muito importantes para análises temporais. \cite{meneses2012introduccao}
+
+\section{Aprendizado de Máquina}\label{aprendizado-de-maquina}
+
+Aprendizado de Máquina é uma área da inteligência artificial que
+se refere ao desenvolvimento de métodos que otimizam sua performance
+iterativamente aprendendo com dados. \cite[p. 2]{mitchell1997machine} define como:
+
+\begin{citacao}
+"Um programa de computador é orientado a aprender da experiência $E$, com
+a uma tarefa $T$ e uma medida de performance $P$, se sua performance em
+$T$, medida por $P$, melhora com a experiência $E$."
+\end{citacao}
+
+Os diversos métodos de AM podem ser categorizados em diversos
+critérios. Se no problema em questão é apresentado um conjunto de dados
+em que se sabe o resultado correto das predições, é chamado de
+\textbf{aprendizado supervisionado}. Caso não se tenha informações sobre
+os resultados, temos um método de \textbf{aprendizado não
+supervisionado}.
+
+Dado um conjunto de testes, o objetivo de um problema de aprendizado
+supervisionado é aprender uma função $h \rarr XY$, sendo $h(x)$, chamada
+de hipótese, um ``bom'' preditor do valor correspondente de $y$.
+
+Dentro dos classificadores supervisionados, podemos dividir em
+regressão e classificação. Em um \textbf{problema de regressão}, temos a
+previsão de um resultado dentro de uma saída contínua, ou seja, é
+necessário mapear as variáveis de entrada em uma função contínua. No
+caso do \textbf{problema de classificação}, o objetivo é a previsão de
+um resultado em uma saída discreta, ou seja, mapeiam-se variáveis de
+entrada em categorias. \cite{coursera}
+
+O foco deste trabalho é o estudo de métodos classificadores
+supervisionados, a fim de predizer classes espectrais que representam
+diferentes alvos de uso e cobertura da terra. Portanto, segue uma
+explicação das principais técnicas utilizadas segundo a literatura, bem
+como as que foram implementadas.
+
+\subsection{Aprendizado
+supervisionado}\label{aprendizado-supervisionado}
+
+No caso em que assumimos que $p(x|y)$ segue uma distribuição
+específica (gauss por exemplo), o método é chamado de
+\textbf{paramétrico}, pois é preciso estimar os parâmetros do modelo
+preditor. No caso dos métodos \textbf{não paramétricos}, não se utilizam
+parâmetros estatísticos para a modelagem da função. \cite{waske2009machine}
+
+\subsubsection{Alto e baixo viés}\label{alto-e-baixo-viuxe9s}
+
+Quando há muitas variáveis na função hipótese $h_\theta$, corre-se o
+risco do modelo se ajustar bem aos exemplos de treinamento, porém, não é
+um bom preditor de novos exemplos, diz-se que é um problema de
+\textbf{alto viés}. O oposto também é problemático, se temos poucas
+variáveis, .corre-se o risco de acontecer \textbf{baixo-viés}. \cite{coursera}
+
+\subsubsection{Validação Cruzada}\label{validauxe7uxe3o-cruzada}
+
+Validação cruzada é um método de reamostragem onde dividi-se o
+conjunto de dados repetidamente em conjuntos de treinamento, usados para
+ajustar o modelo, e conjuntos de teste, usados para verificar o
+desempenho das predições. A validação é feita utilizando medidas de
+análise de precisão, e o resultado é um modelo preditor com viés
+reduzido, ou seja, tem maior capacidade de generalizar novos dados
+\cite{geocompr,james2013introduction}.
+
+\subsection{Aprendizado de Máquina e Sensoriamento
+remoto}\label{aprendizado-de-muxe1quina-e-sensoriamento-remoto}
+
+Em sensoriamento remoto, algoritmos preditivos focam em classificações
+de cobertura da terra. Nesse contexto o algoritmo aprende a diferenciar
+diferentes tipos de padrões complexos, no caso, classes de cobertura da
+terra. \cite{waske2009machine}
+
+Classificadores não paramétricos aceitam diversos tipos de dados de
+treinamento de entrada, além de não fazerem suposições sobre a
+distribuição dos dados, que são características desejáveis para o
+problema. \cite{maxwell}
+
+Quando se fala em classificação de imagens e reconhecimento de
+padrões, podemos acrescentar mais um critério de divisão dos métodos. Se utilizarmos as informações espectrais de cada \emph{pixel} de
+treinamento para encontrar regiões homogêneas, estamos descrevendo um
+classificador \textbf{pixel a pixel}. Outro caso, é quando se realiza um
+agrupamento de \emph{pixels} por métodos de segmentação de imagens em
+grupos que serão unidades a serem classificadas, então é um
+classificador \textbf{por região}, também conhecido como OBIA, ou quando
+se fala em dados geográficos, GEOBIA. \cite{meneses2012introduccao,lu-weng}
+
+\subsection{Algoritmos}\label{algoritmos}
+
+Dois algoritmos de classificação foram utilizados e testado neste
+trabalho:\sigla{MVS}{Máquina de Vetores de Suporte}, ou \emph{Support Vector
+Machine} e \sigla{FA}{Floresta Aleatória}, ou \emph{Random Forest}.
+
+\subsubsection{Máquina de Vetores
+Suporte}\label{muxe1quina-de-vetores-suporte}
+
+Na classificação paramétrica, o objetivo é definir um espaço de
+características para cada classe. No caso da MVS (não paramétrica), o
+foco está apenas nos exemplos de treinamento que estão próximos do
+\textbf{limite de decisão} (\emph{decision boundary}) ótimo que separa
+as classes. Estes exemplos definem os \textbf{vetores de suporte}. \cite{maxwell}
+
+O objetivo é achar o limite de decisão ótimo entre duas classes,
+maximizando a margem entre os vetores de suporte. Originalmente, a MVS
+foi feita para identificar um limite de decisão linear (definindo um
+\emph{hyperplano}), porém, essa limitação foi resolvida projetando o
+espaço de características para uma dimensão maior. Essa projeção é feita
+com uma função denominada de \textbf{núcleo} (ou \emph{kernel}). Em
+sensoriamento remoto, as funções de núcleo mais utilizadas são
+\emph{Radial Basis Function} e também a polinomial. \cite{maxwell}
+
+\subsubsection{Florestas Aleatórias}\label{florestas-aleatuxf3rias}
+
+O método de FA é baseado em Árvore de Decisão (AD). Uma AD é definida
+como cortes recursivos nos dados de entrada. As divisões são feitas
+repetidamente, criando novas ramificações (como um tronco de uma
+árvore), sendo que ao chegar em uma ``ponta'' (ou folhas), é definida
+uma classe. Uma AD é um conceito simples de se entender e visualizar, e
+também podem ser boas preditoras, porém, correm o risco de se ajustarem
+bem demais para um conjunto de treinamento, caindo no problema do alto viés. \cite{maxwell}
+
+As Florestas Aleatórias utilizam em conjunto um número definido de
+AD's. Uma classe será definida a partir do ``voto'' da maioria das
+árvores presentes na floresta. Essa abordagem supera o problema de alto
+viés de uma única AD, chegando assim mais perto de uma solução global. \cite{maxwell}
+
+Esse conceito é ainda ampliado: cada árvore é treinada com um único
+subconjunto de teste e variáveis, gerados aleatoriamente. Essa
+combinação significa que uma única árvore será menos precisa, porém,
+também estará menos correlacionada com todas as outras, tornando o
+conjunto mais confiável. \cite{maxwell}
+
+\subsection{Avaliação de
+Desempenho}\label{avaliauxe7uxe3o-de-desempenho}
+
+Para verificar a acurácia após realizada a classificação, um método
+comumente empregado em sensoriamento remoto é o cálculo da matriz de erro \cite{lu-weng}, utilizada para comparação entre os dados de referência e os dados classificados. Alguns fatores que podem influenciar na acurácia
+podem ser: a complexidade do terreno; o algoritmo utilizado; número de
+classes; conjunto de dados que representa a verdade \cite{meneses2012introduccao}, que podem
+ser obtidos por exemplo através de outras classificações ou validação em
+campo.
+
+A partir da matriz de erro são calculados índices de validação. Um
+deles é a avaliação geral, calculado a partir da divisão entre a soma
+dos elementos da diagonal principal (elementos classificados
+corretamente) e a soma do total de pontos. Outro índice muito utilizado
+é o \emph{kappa}, proposto por \cite{landis1977application} que varia de 0 até
+1, onde: 0 -- 0,2 = ruim; 0,2 -- 0,4 = razoável; 0,4 -- 0,6 = boa; 0,6
+-- 0,8 = muito boa; e 0,8 --1,0 = excelente. \cite{meneses2012introduccao}

@@ -1,0 +1,768 @@
+---
+title: "Classificação de Imagens de Sensoriamento Remoto"
+author: "Alexandre de Tomy Silva"
+date: "27/10/2019"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+#https://yihui.name/knitr/objects/
+#https://rmarkdown.rstudio.com/lesson-3.html
+#https://rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf
+knitr::opts_chunk$set(
+  echo = TRUE, 
+  cache = TRUE,
+  cache.path = "./.cache/"
+)
+options(stringsAsFactors = FALSE)
+```
+
+# Introdução
+
+# R
+
+## Carrega biblioteas
+
+```{r message=FALSE, warning=FALSE, cache=TRUE}
+library(sf)
+library(raster)
+# library(spData)
+
+library(ggplot2)
+library(rasterVis)
+library(mapview)
+
+library(dplyr)
+library(readr)
+
+# library(mlr)
+library(caret)
+
+library(getSpatialData)
+library(RStoolbox)
+
+library(parallel)
+library(doParallel)
+```
+
+# Aquisicao de dados
+
+## Área de estudo
+
+A área do município de Bauru - SP foi escolhida como objeto de estudo, que está representada pelo modelo vetorial (pontos, linhas e polígonos) obtido pelo site do Instituto Brasileiro de Geografia e Estatística (IBGE) no formato *shapefile*.
+
+Primeiro, o arquivo com a malha municipal do estado de São Paulo foi baixado.
+```{r, message=FALSE}
+if(!file.exists("./dados/ibge/35MUE250GC_SIR.shp")){
+  url <- "ftp://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_municipais/municipio_2018/UFs/SP/sp_municipios.zip"
+  destino_zip <- "./dados/ibge/sp_municipios.zip"
+  
+  # download e descompactacao dos dados
+  download.file(url = url, destfile = destino_zip)
+  unzip(destino_zip, exdir="./dados/ibge/")
+  
+  file.remove(destino_zip)
+}
+```
+
+Em seguida, foi selecionado apenas o polígono que representa a cidade.
+```{r, message=FALSE}
+sp_shp <- st_read("./dados/ibge/35MUE250GC_SIR.shp")
+bauru_shp <- sp_shp %>% 
+  filter(NM_MUNICIP == "BAURU")
+
+
+# library(tmap)
+# library(ggmap)
+# mapa_bauru <- plot(bauru_shp$geometry)
+
+crs(bauru_shp)
+
+# ggmap(bauru_shp)
+# 
+# ggplot() +
+#   geom_path(data = bauru_shp, aes(st_crs(bauru_shp))) +
+#   labs(title = "Global Coastlines - using ggplot")
+
+
+# mapa_bauru <- tm_shape(bauru_shp) +
+#   tm_fill() +
+#   tm_borders() +
+#   tm_compass(type = "8star", position = c("left", "top"))
+# saveRDS(mapa_bauru, './saida/mapas/mapa_bauru.rds')
+```
+
+Todo dado espacial é composto por um sistema de referência de coordenadas, que pode ser geográfico ou projetado. As bibliotecas do R e muitos outros SIGs adotam o padrão da biblioteca PROJ.
+```{r}
+st_crs(bauru_shp)
+```
+
+## Dados de treinamento
+
+### Mapbiomas
+
+COLECAO 3.1
+
+O projeto MapBiomas
+> é uma iniciativa multi-institucional para gerar mapas anuais de cobertura e uso do solo a partir de processos de classificação automática aplicada a imagens de satélite.
+
+Os dados gerados pelo projeto - e disponibilizados através de [diversas ferramentas](https://github.com/mapbiomas-brazil/user-toolkit) - foram coletados e usados neste trabalho para extração dos exemplos de **treinamento** do modelo preditivo.
+
+### Classes
+
+As classes de uso e cobertura do solo, de acordo com a [metodologia aplicada](https://mapbiomas.org/downloads_codigo), são as seguintes:
+```{r}
+classes <- read.csv("./dados/mapbiomas/classes.csv") 
+
+classes_mapbiomas <- classes %>% 
+  select(name.full, value)
+
+saveRDS(classes_mapbiomas ,"./saida/tabelas/classes_mapbiomas.rds")
+```
+
+### Seleção de amostras
+
+Cerrado
+```{r message=FALSE}
+if(!file.exists(cerrado_file <- "./dados/mapbiomas/CERRADO.tif")){
+  url <- "http://storage.googleapis.com/mapbiomas-public/COLECAO/3_1/CONSOLIDACAO/CERRADO.tif"
+  destino_zip <- "./dados/ibge/sp_municipios.zip"
+  download.file(url = url, destfile = cerrado_file)
+} else{
+  cerrado_raster <- raster("./dados/mapbiomas/CERRADO.tif")  
+}
+```
+
+Como a extensão do raster é muito grande, foi feito um recorte de toda a região do cerrado que intersecta com o estado de são paulo. Depois, para cada classe presente no *raster*, foi extraído 200 pontos aleatórios, como mostrado na tabela a seguir
+```{r message=FALSE}
+if(!file.exists("./saida/shapefile/pontos_amostra_sp.shp")){
+  # reprojeta shapefile para o SRC do raster
+  sp_shp_reproj <- 
+    st_transform(sp_shp,projection(cerrado_raster))
+  
+  # recorta depois aplica mascara no formato do poligono
+  sp_raster_cerrado <- cerrado_raster %>% 
+    crop(sp_shp_reproj) %>% 
+    mask(sp_shp_reproj)
+  
+  # Raster Atribute Table
+  rat <- sp_raster_cerrado %>% 
+    ratify() %>%                          
+    levels() %>%
+    `[[`(1) 
+  
+  # Nomeia 
+  levels(sp_raster_cerrado) <- rat
+  
+  # Extrai 200 pontos aleatorios para cada classe
+  set.seed(123)
+  samples <- sp_raster_cerrado %>%
+    sampleStratified(size = 200, na.rm = TRUE, sp = TRUE) %>%
+    st_as_sf() %>% 
+    select(-cell)
+  
+  st_write(samples,"./saida/shapefile/pontos_amostra_sp.shp")
+  
+  saveRDS("./cache/sp_raster_cerrado.rds")
+} else{
+  samples <- st_read("./saida/shapefile/pontos_amostra_sp.shp", quiet = TRUE)
+}
+samples$CERRADO %>%
+  table()
+
+# classes[match(samples$CERRADO %>% unique(), classes$value), c("value","name.full")] %>% xtable()
+```
+
+Posteriormente, foi utilizada a plataforma *Google Earth Engine* para obtenção dos dados de treinamento. A metodologia aplicada foi: *upload* do arquivo gerado com os pontos aleatórios das classes para a plataforma; obtenção dos dados da coleção ('COPERNICUS/S2_SR') do sensor [MSI](https://en.wikipedia.org/wiki/Sentinel-2#Instruments) do satélite Sentinel 2, mais específicamente, imagens de [Level 2A](https://earth.esa.int/web/sentinel/user-guides/sentinel-2-msi/product-types/level-2a) que possuem correções atmosféricas e geométricas aplicadas; em seguida, foram selecionadas apenas as imagens entre as datas de 01/01/2019 e 01/10/2019, com percentagem de núvens menor que 0.1 e que estivessem dentro do contorno da região dos pontos gerados anteriormente; a média de todas as imagens trazidas foi computada e então, para cada ponto, foram extraídos os valores de todas as bandas; por útimo, a tabela gerada foi exportada para o *Google Drive*. 
+
+Segue o script aplicado na plataforma:
+```{javascript}
+/**
+ * @referencia
+ *    https://www.youtube.com/playlist?list=PLNFvG6bTA4NReWtgC93Mh9Tw1RNG4EBMP
+ *    https://developers.google.com/earth-engine/api_docs#ee.image.reduceregion
+ *    https://gis.stackexchange.com/questions/265392/extracting-pixel-values-by-points-and-converting-to-table-in-google-earth-engine
+ */
+ 
+var pts_amostra = ee.FeatureCollection('users/alexandretomy/tcc/pontos_amostra_sp')
+var sent2a_col = ee.ImageCollection('COPERNICUS/S2_SR')
+
+var aoi = ee.FeatureCollection(pts_amostra)
+
+var collection = sent2a_col
+  .filterDate('2019-01-01', '2019-10-01')
+  .filterBounds(aoi)
+  .filterMetadata('CLOUDY_PIXEL_PERCENTAGE', 'less_than', 0.1)
+//   .filterMetadata('CLOUD_COVER', 'less_than', 5)
+  
+print(collection)
+var median = collection.median();
+
+var samplePointsValues = 
+  median.reduceRegions({
+      reducer: ee.Reducer.first(),
+      collection: aoi,
+      scale: 30,
+      tileScale: 2
+    })
+
+print(samplePointsValues)
+
+Map.centerObject(aoi)
+// Map.addLayer(collection)
+Map.addLayer(collection.select('B4','B3','B2'))
+Map.addLayer(aoi)
+
+Export.table.toDrive(
+  samplePointsValues,
+  "valores das amostras aleatorias",
+  "EarthEngineExport",
+  "samplePointsValues"
+)
+```
+
+
+## Satélite Sentinel
+
+Como abordado acima, o sensor multiespectral do Satélite Sentinel 2, possui as seguintes características:
+
+```{r}
+sentinel_bandas <- read.csv("./dados/satelite/sentinel/bandas.csv") 
+sentinel_bandas
+```
+
+Os [dados](https://sentinel.esa.int/web/sentinel/sentinel-data-access) dos satélites Sentinel podem ser obtidos gratuitamente, é necessário apenas cadastro. No R, há diversas bibliotecas que fazem a *interface* com o *hub*.
+
+```{r eval=FALSE}
+# credenciais e diretorio de dados (no meu caso, estao no arquivo .Rprofile)
+login_CopHub(username = cophub.user, password = cophub.pass)
+# diretorio dos dados
+set_archive("./dados/satelite/sentinel/")
+```
+
+A partir dos filtros por data e cobertura de núvem, foram selecionadas 2 imagens para que recobrissem a área de interesse completamente.
+```{r eval=FALSE}
+# registros da pesquina no copernicus hub
+registros <- getSentinel_query(
+    aoi = bauru_shp$geometry,
+    time_range = c("2018-01-01", "2019-10-01"),
+    platform = "Sentinel-2"
+  ) %>% 
+  filter(cloudcoverpercentage <= 5)
+head(registros)
+
+if(!.exists("./dados/satelite/sentinel/get_data/")){
+  # baixa as imagens
+  getSentinel_data(records = registros[c(5,6),])
+}
+ 
+
+```
+
+```{r message=FALSE, include=FALSE}
+func_le <- function(dir_1){
+  ras_list <- list()
+  for(dir_2 in list.dirs(dir_1, recursive = FALSE)){
+    dirs <- list.dirs(dir_2)
+    r10m <- list.files(dirs[grepl('R10m', dirs)][1], pattern = '.*B.*jp2$', full.names = TRUE)
+    r20m <- list.files(dirs[grepl('R20m', dirs)][1], pattern = '.*B.*[56781].*jp2$', full.names = TRUE)
+    
+    ras <- lapply(c(r10m, r20m), FUN = raster)
+    ras_list <- append(ras_list, list(ras))
+  }
+  return(ras_list)
+}
+
+func_by2col <- function(li,func){
+  out <- list()
+  for(i in 1:length(li[[1]])){
+    do <- func(li[[1]][[i]],li[[2]][[i]])
+    out <- append(out,do)
+  }
+  return(out)
+}
+```
+
+As duas imagens foram recortadas e depois juntadas em uma única composição. Posteriormente, foi feito um redimensionamento das bandas de 20m para 10m, para que fossem compiladas em uma única pilha de *raster*.
+```{r message=FALSE}
+if(!file.exists("./dados/satelite/sentinel/sentinel.tif")){
+  sentinel_ras <- func_le("./dados/satelite/sentinel/get_data/Sentinel-2/")
+  
+  bauru_shp_reproj <- 
+    st_transform(bauru_shp,projection(sentinel_ras[[1]][[1]]))
+  
+  sentinel_merge <- 
+    purrr::map(sentinel_ras,{function(ras) lapply(ras,FUN = raster::crop, y = extent(bauru_shp_reproj))}) %>% 
+    func_by2col(raster::merge)
+  
+  sentinel_names <- stringr::str_extract(sapply(sentinel_ras[[1]],names),"B.{2}")
+  
+  names(sentinel_merge) <- sentinel_names
+  
+  sentinel_resamp <- vector(mode = "list", length = length(sentinel_merge))
+  names(sentinel_resamp) <- names(sentinel_merge)
+  
+  for (b in c("B05", "B06", "B07", "B8A", "B11", "B12")){
+    beginCluster(n = round(3/4 * parallel::detectCores()))
+    try(
+      sentinel_resamp[[b]] <- raster::resample(x = sentinel_merge[[b]],
+                                                  y = sentinel_merge$B02)
+    )
+    endCluster()
+  }
+  
+  b_10m <- c("B02", "B03", "B04", "B08")
+  sentinel_resamp[b_10m] <- sentinel_merge[b_10m]
+  sentinel <- stack(sentinel_resamp)
+  
+  names(sentinel) <- names(sentinel_merge)
+  
+  writeRaster(sentinel, './dados/satelite/sentinel/sentinel.tif', overwrite=FALSE)
+} else {
+  sentinel <- stack("./dados/satelite/sentinel/sentinel.tif")
+  sentinel_names <- c("Azul","Verde","Vermelho","NIR","RE1","RE2","RE3","SWIR1","SWIR2","RE4")
+  names(sentinel) <- sentinel_names
+}
+```
+
+Segue uma composição com as bandas do Vermelho, Verde e Azul da região do município.
+```{r}
+sentinel_rgb_plot <- ggRGB(sentinel,r=3,g=2,b=1)
+sentinel_rgb_plot
+
+plot_sentinel <- plotRGB(sentinel,r=3,g=2,b=1, stretch = "lin")
+```
+
+# Extracao de caracteristicas
+
+## Selecionando bandas
+
+A partir do arquivo gerado pelo script na plataforma do Google Earth Engine, foram selecionadas as bandas, ou variáveis, para criação do modelo preditivo
+```{r}
+# Carrega amostra com valores extraidos
+amostras_com_valores <- st_read("./dados/samp_val.geojson", quiet = TRUE)
+
+# Nomeia as bandas
+bandas <- data.frame(
+  name = c("SWIR1","SWIR2","Azul","Verde","Vermelho","NIR","RE1","RE2","RE3","RE4"),
+  band = c("B11","B12","B2","B3","B4","B5","B6","B7","B8","B8A")
+) 
+bandas
+saveRDS(bandas,"./saida/tabelas/bandas_sel.rds")
+```
+
+## Indices de vegetacao
+
+Os índices de vegetação são obtidos através de operações aritméticas entre as bandas. Possuem a característica de realçar as variações de densidade da cobertura vegetal. O NDVI é provavelmente o mais utilizado, ele possui a característica de evidenciar áreas da vegetação fotossinteticamente mais ativas e é calculado a partir das bandas do Vermelho e Infravermelho Próximo.
+```{r}
+calculaIndice <- function(x,y){
+  (x-y)/(x+y)
+}
+
+NDVI <- overlay(sentinel$NIR,sentinel$Vermelho,fun=calculaIndice)
+names(NDVI) <- "NDVI"
+sentinel <- stack(sentinel,NDVI)
+
+ggR(NDVI, geom_raster = TRUE)
+
+plot_ndvi <- plot(NDVI,
+     axes = FALSE,
+     box = FALSE)
+
+saveRDS(NDVI, "./saida/plots/plot_ndvi.rds")
+```
+
+Aqui, foi montada a tabela contendo as variáveis de treinamento (bandas e índice de vegetação) bem como as classes alvo.
+```{r}
+if(!file.exists("./cache/amostras.rds")){
+  # Acrescenta coluna de NDVI e seleciona as bandas definidas
+  amostras <- amostras_com_valores %>%
+    mutate(NDVI = calculaIndice(B5,B4)) %>% 
+    select(bandas$band,NDVI,CERRADO) %>% 
+    st_drop_geometry() %>% 
+    na.omit()
+  
+  # Renomeia as bandas e a coluna das classes
+  names(amostras) <- c(bandas$name,"NDVI","Classe")
+  
+  # Tabela com as informacoes das classes (cor, nome e valor)
+  classes_subset <- classes %>% 
+    filter(value %in% unique(amostras$Classe)) %>% 
+    select(value,name,color)
+  
+  # Renomeia a coluna das classes pelo nome
+  amostras$Classe <- amostras$Classe %>% 
+    plyr::mapvalues(from=unique(.), to=classes_subset$name)
+  
+  saveRDS(amostras, "./cache/amostras.rds")
+} else {
+  amostras <- readRDS("./cache/amostras.rds")
+}
+  
+head(amostras)
+
+# amostras$Classe %>% table %>% as.data.frame %>% xtable()
+
+saveRDS(amostras,"./saida/tabelas/amostras.rds")
+```
+
+Podemos vizualisar a correlação entre as bandas em gráficos para cada par, representado a seguir.
+```{r}
+plot_bandas <- amostras_plot_bandas <- amostras %>% 
+  select(-Classe,-NDVI) 
+  # plot()
+
+saveRDS(plot_bandas, "./saida/plots/plot_bandas.rds")
+
+featurePlot(x = amostras %>% select(-Classe), 
+            y = amostras$Classe, 
+            plot = "pairs",
+            ## Add a key at the top
+            auto.key = list(columns = 3))
+```
+
+
+# Classificação
+
+## Validação Cruzada
+
+Validação cruzada é um método de reamostragem onde dividi-se o conjunto de dados repetidamente em conjuntos de treinamento, usados para ajustar o modelo, e conjuntos de teste, usados para verificar o desempenho das predições. No caso, foi feito uma divisão de 75% para o conjunto de treinamento, e os 25% restantes para testes. Além disso, foi definido uma repetição de 10 vezes em que a repartição é realizada.
+
+```{r}
+set.seed(123)
+
+idx_treino <- createDataPartition(amostras$Classe,
+                                  p = 0.75,
+                                  list = FALSE)
+
+amostras_treino <- amostras[idx_treino,]
+amostras_teste <- amostras[-idx_treino,]
+
+saveRDS(amostras_treino, "./saida/modelos/amostras_treino.rds")
+saveRDS(amostras_teste, "./saida/modelos/amostras_teste.rds")
+
+table(amostras_treino$Classe)
+table(amostras_teste$Classe)
+
+
+controle_treino <- trainControl(
+  summaryFunction = multiClassSummary,
+  method = "cv",
+  number = 10,
+  savePredictions = TRUE
+)
+```
+
+
+## Treinamento
+
+### SVM
+```{r}
+if(!file.exists("./cache/modelo_svm_radial.rds")){
+  cluster <- makeCluster(3/4 * detectCores())
+  registerDoParallel(cl)
+  
+  modelo_svm_radial <- caret::train(
+    Classe ~ ., method = "svmRadial", data = amostras_treino,
+    tuneGrid = data.frame(
+      .C = c(0.01,0.3,1),
+      .sigma = c(0.05,0,1)
+    ),
+    trControl = controle_treino,
+    allowParallel = TRUE,
+    preProc = c("center", "scale")
+  )
+  
+  stopCluster(cl); remove(cl)
+  registerDoSEQ()
+  saveRDS(modelo_svm_radial, "./cache/modelo_svm_radial.rds")
+} else {
+  modelo_svm_radial <- readRDS("./cache/modelo_svm_radial.rds")
+}
+modelo_svm_radial
+```
+
+```{r}
+plot_svm_radial <- ggplot(modelo_svm_radial)
+saveRDS(plot_svm_radial,"./saida/modelos/plot_svm_radial.rds")
+```
+
+
+```{r}
+if(!file.exists("./cache/modelo_svm_linear.rds")){
+  cl <- makeCluster(3/4 * detectCores())
+  registerDoParallel(cl)
+  
+  modelo_svm_linear <- caret::train(
+    Classe ~ ., method = "svmLinear3", data = amostras_treino,
+    tuneGrid = expand.grid(
+      cost = c(0.03,0.1,3),
+      Loss = c("L1", "L2")
+    ),
+    trControl = controle_treino,
+    allowParallel = TRUE,
+    preProc = c("center", "scale")
+  )
+  
+  stopCluster(cl); remove(cl)
+  registerDoSEQ()
+  saveRDS(modelo_svm_linear, "./cache/modelo_svm_linear.rds")
+} else {
+  modelo_svm_linear <- readRDS("./cache/modelo_svm_linear.rds")
+}
+modelo_svm_linear
+```
+
+
+```{r}
+matriz_confusao_svm_linear <- confusionMatrix(
+  data = predict(modelo_svm_linear, newdata = amostras_teste),
+  reference = as.factor(amostras_teste$Classe)
+)
+matriz_confusao_svm_linear
+plot_svm_linear <- ggplot(modelo_svm_linear)
+saveRDS(plot_svm_linear, "./saida/modelos/plot_svm_linear.rds")
+```
+
+### Random Forest
+
+```{r}
+
+if(!file.exists("./cache/modelo_rf.rds")){
+  cluster <- makeCluster(3/4 * detectCores())
+  registerDoParallel(cluster)
+  
+  modelo_rf <- caret::train(
+    Classe ~ ., method = "rf", data = amostras_treino,
+    tuneGrid = data.frame(mtry = c(2, 3, 4, 5, 8)),
+    trControl = controle_treino,
+    allowParallel = TRUE
+  )
+  
+  stopCluster(cluster); remove(cluster)
+  registerDoSEQ()
+  saveRDS(modelo_rf, "./cache/modelo_rf.rds")
+  modelo_rf$times$everything    
+} else {
+  modelo_rf <- readRDS("./cache/modelo_rf.rds")
+}
+modelo_rf
+```
+
+```{r}
+randomForest::importance(modelo_rf$finalModel)
+
+importance_rf <- randomForest::varImpPlot(modelo_rf$finalModel)
+saveRDS(importance_rf, "./saida/modelos/importance_rf.rds")
+
+matriz_confusao_rf
+plot_rf <- ggplot(modelo_rf)
+saveRDS(plot_rf, "./saida/modelos/plot_rf.rds")
+```
+
+## Resultados
+
+```{r}
+resultados <- resamples(list(
+  RandomForest=modelo_rf,SVMRadial=modelo_svm_radial,SVMLinear=modelo_svm_linear
+))
+
+resultados_kappa <- dotplot(resultados, metric="Accuracy")
+saveRDS(resultados_kappa, "./saida/modelos/resultados_kappa.rds")
+```
+
+
+```{r}
+if(!file.exists("./saida/raster/predicao_rf.tif")){
+  time_predict <- system.time({
+    predicao_svm_radial <- raster::predict(
+      object = sentinel,
+      model = modelo_svm_radial, na.rm = TRUE,
+      progress = "text", type = "raw"
+    )
+    predicao_rf <- raster::predict(
+      object = sentinel,
+      model = modelo_rf, na.rm = TRUE,
+      progress = "text", type = "raw"
+    )
+    predicao_svm_linear <- raster::predict(
+      object = sentinel, 
+      model = modelo_svm_linear, na.rm = TRUE,
+      progress = "text", type = "raw"
+    )
+  })
+  time_predict
+  writeRaster(predicao_rf, "./saida/raster/predicao_rf.tif")
+  writeRaster(predicao_svm_linear, "./saida/raster/predicao_svm_linear.tif")
+  writeRaster(predicao_svm_radial, "./saida/raster/predicao_svm_radial.tif")
+} else{
+  predicao_svm_linear <- raster("./saida/raster/predicao_svm_linear.tif")
+  predicao_svm_radial <- raster("./saida/raster/predicao_svm_radial.tif")
+  predicao_rf <- raster("./saida/raster/predicao_rf.tif")
+}
+
+# renomeia <- function(pred) {
+#   classes[
+#     match(pred@data@attributes[[1]]$category, classes$name),
+#     c("value","name.full")
+#   ] %>% `colnames<-`(c("ID","category"))
+#   classes %>%
+#     filter(name %in% pred@data@attributes[[1]]$category) %>%
+#     select(value,name.full) %>%
+#     as.data.frame() %>%
+#     `colnames<-`(c("ID","category"))
+# }
+# 
+# levels(predicao_svm_linear) <- renomeia(predicao_svm_linear)
+# levels(predicao_svm_radial) <- renomeia(predicao_svm_radial)
+# levels(predicao_rf) <- renomeia(predicao_rf)
+```
+
+Mapa bauru
+```{r}
+if(!file.exists("./cache/mapbiomas_bauru_reproj.rds")){
+  bauru_raster <- raster("./dados/mapbiomas/mapbiomas-bauru-2017.tif")
+  
+  levels(bauru_raster) <- bauru_raster %>% 
+    ratify() %>% 
+    levels() %>% 
+    "[["(1)
+  
+  levels(bauru_raster)[[1]]$legend <- classes[match(
+      bauru_raster@data@attributes[[1]]$ID,
+      classes$value
+    ),"name.full"]
+
+  mapbiomas <- bauru_raster %>% 
+    projectRaster(crs = crs(predicao_svm_linear),
+                  res = 10, method = 'ngb')
+  
+  levels(mapbiomas) <- levels(bauru_raster)
+  saveRDS(mapbiomas,"./cache/mapbiomas_bauru_reproj.rds")
+}else{
+  mapbiomas <- readRDS("./cache/mapbiomas_bauru_reproj.rds")
+}
+
+colors_mapbiomas <- classes[match(
+    mapbiomas@data@attributes[[1]]$ID,
+    classes$value
+  ),"color"]
+
+map_mapbiomas <- rasterVis::levelplot(
+    mapbiomas, maxpixels = 1e6,
+    col.regions = colors_mapbiomas
+)
+map_mapbiomas
+saveRDS(map_mapbiomas,"./saida/mapas/map_mapbiomas.rds")
+```
+
+```{r}
+colors_predicao <- classes[match(
+    predicao_svm_linear@data@attributes[[1]]$category,
+    classes$name
+),"color"]
+
+map_svm_linear <- rasterVis::levelplot(
+  predicao_svm_linear, maxpixels = 1e6,
+  col.regions = colors_predicao
+)
+saveRDS(map_svm_linear, "./saida/mapas/map_svm_linear.rds")
+
+map_svm_radial <- rasterVis::levelplot(
+  predicao_svm_radial, maxpixels = 1e6,
+  col.regions = colors_predicao
+)
+saveRDS(map_svm_radial, "./saida/mapas/map_svm_radial.rds")
+
+map_rf <- rasterVis::levelplot(
+  predicao_rf, maxpixels = 1e6,
+  col.regions = colors_predicao
+)
+saveRDS(map_rf, "./saida/mapas/map_rf.rds")
+
+maps <- leafsync::sync(
+  mapView(mapbiomas, col.regions = colors_mapbiomas, maxpixels = 5e5),
+  mapView(predicao_svm_radial, col.regions = colors_predicao, maxpixels = 5e5),
+  mapview(predicao_svm_linear, col.regions = colors_predicao, maxpixels = 5e5),
+  mapview(predicao_rf, col.regions = colors_predicao, maxpixels = 5e5)
+)
+maps
+```
+
+```{r}
+map_svm_linear
+map_svm_radial
+map_rf
+map_mapbiomas
+```
+```{r}
+classes
+```
+
+
+## Matriz de confusao
+
+```{r}
+calcula_matriz_confusao <- function(p,nSamp){
+  pred <- p
+  levels(pred)[[1]]$value <- classes[match(
+    pred@data@attributes[[1]]$category,
+    classes$name
+  ),"value"]
+  
+  derat <- deratify(pred, att = "value")
+  
+  samp <- derat %>% 
+    sampleStratified(size = nSamp, na.rm = TRUE, 
+                     sp = TRUE, exp = nSamp)
+  
+  extct <- extract(mapbiomas,samp)
+  intersect(samp$value,extct)
+  all <- intersect(samp$value,extct)
+  
+  cm <- table(samp$value %>% factor(all),
+              extct %>% factor(all)) %>% 
+    confusionMatrix()
+  return(cm)
+}
+
+if(!file.exists("./cache/matriz_confuscao_svm_linear.rds")){
+  set.seed(20112019)
+  matriz_confuscao_svm_linear <- calcula_matriz_confusao(predicao_svm_linear,100)
+  matriz_confuscao_svm_radial <- calcula_matriz_confusao(predicao_svm_radial,100)
+  matriz_confuscao_rf <- calcula_matriz_confusao(predicao_rf,100)
+  
+  saveRDS(matriz_confuscao_svm_linear,"./cache/matriz_confuscao_svm_linear.rds")
+  saveRDS(matriz_confuscao_svm_radial,"./cache/matriz_confuscao_svm_radial.rds")
+  saveRDS(matriz_confuscao_rf,"./cache/matriz_confuscao_rf.rds")
+}else{
+  matriz_confusao_svm_linear <- readRDS("./cache/matriz_confuscao_svm_linear.rds")
+  matriz_confusao_svm_radial <- readRDS("./cache/matriz_confuscao_svm_radial.rds")
+  matriz_confusao_rf <- readRDS("./cache/matriz_confuscao_rf.rds")
+}
+
+matriz_confusao_svm_linear$overall
+matriz_confusao_svm_radial$overall
+matriz_confusao_rf$overall
+
+table_matriz_confusao <- data.frame(
+  Modelo=c("MVS linear", "MVS radial", "Florestas Aleatorias"),
+  Kappa=c(matriz_confusao_svm_linear$overall[[2]],
+          matriz_confusao_svm_radial$overall[[2]],
+          matriz_confusao_rf$overall[[2]]),
+  Acuracia=c(matriz_confusao_svm_linear$overall[[1]],
+             matriz_confusao_svm_radial$overall[[1]],
+             matriz_confusao_rf$overall[[1]])
+)
+
+saveRDS(table_matriz_confusao, "./saida/tabelas/confusao.rds")
+
+table_matriz_confusao %>% xtable()
+```
+
+
+

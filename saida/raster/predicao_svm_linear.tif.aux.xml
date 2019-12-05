@@ -1,0 +1,17 @@
+<PAMDataset>
+  <PAMRasterBand band="1">
+    <CategoryNames>
+      <Category></Category>
+      <Category>agricultura_pastagem</Category>
+      <Category>cultura_anual_perene</Category>
+      <Category>cultura_semi_perene</Category>
+      <Category>floresta_plantada</Category>
+      <Category>formacao_campestre</Category>
+      <Category>formacao_florestal</Category>
+      <Category>formacao_savanica</Category>
+      <Category>infra_urbana</Category>
+      <Category>pastagem</Category>
+      <Category>rio_lago_oceano</Category>
+    </CategoryNames>
+  </PAMRasterBand>
+</PAMDataset>

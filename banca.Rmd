@@ -1,0 +1,323 @@
+---
+title: APLICAÇÃO DE MÉTODOS DE APRENDIZADO DE MÁQUINA PARA CLASSIFICAÇÃO DE IMAGENS
+  DE SENSORIAMENTO REMOTO POR SATÉLITES
+author: "Alexandre de Tomy Silva"
+date: "Outubro/2019"
+output:
+  beamer_presentation:
+    theme: "Singapore"
+    colortheme: "lily"
+  ioslides_presentation: default
+  slidy_presentation: default
+---
+
+<style type="text/css">
+
+.title-slide hgroup h1 {
+  font-size: 28px;
+  letter-spacing: 0;
+}
+
+</style>
+
+```{r setup, include=FALSE}
+library(knitr)
+library(kableExtra)
+library(sf)
+knitr::opts_chunk$set(echo = FALSE,
+                      cache = TRUE,
+                      message=FALSE,
+                      cache.path = "./.cache/")
+# kableExtra::kable_styling(latex_options = "scale_down")
+```
+
+
+# Introdução
+
+## Observação da Terra
+
+- Dados gerados pela Observação da Terra
+  - Visão multitemporal
+  - Monitoramento dos recursos terrestres
+
+## Sensoriamento Remoto
+
+> Sensoriamento  remoto  é  uma  técnica  de  obtenção  de  imagens  dos  objetos  da  superfície  terrestre  sem  que  haja  um  contato  físico  de  qualquer  espécie entre o sensor e o objeto.
+
+- Coleta, distribuição e análise
+- Mudanças na ocupação do solo afetam o clima
+
+## Classificação de Imagens
+
+- Aprendizado de máquina para reconhecimento de padrões de classes de uso e cobertura da terra
+  - Não é necessário conhecimento a priori sobre distribuição dos dados
+  - Base para outras aplicações
+
+## Disponibilidade dos dados
+
+- Demanda para processamento e armazenamento
+- Plataformas de computação em nuvem como solução
+  - Monitoramento em escala global
+  - Problemas de reprodutibilidade
+
+## Objetivo
+
+- Desenvolvimento e estudo de modelos preditivos de classificação de imagens de sensoriamento remoto
+  - Dados: **MapBiomas** e **Sentinel-2/MSI**
+  - Área de interesse: Região do município de **Bauru**
+  - Ferramentas: Linguagem **R** e **Google Earth Engine**
+  - Classes: padrões de **uso e cobertura terrestre **
+  - Algoritmos: **Máquina de Vetores Suporte** (linear com regularização e com função de base radial como núcleo) e **Florestas Aleatórias**
+
+# Fundamentação Teórica
+
+## Sensoriamento Remoto
+
+- Presença de um **alvo** (superfície terrestre) que interage com a **energia** (radiação) provinda de uma **fonte** (luz solar), gerando uma resposta que é captada por um **sensor** (acoplado em um satélite).
+
+## Aprendizado de máquina
+
+- Aprendizado de Máquina é uma área da inteligência artificial que se refere ao desenvol-vimento de métodos que otimizam sua performance iterativamente aprendendo com dados
+
+## Aprendizado de máquina | 
+
+- Problema de **classificação** pixel a pixel, aplicando métodos **supervisionados** e **não paramétricos** 
+
+## Aprendizado de máquina | *Support Vector Machines*
+
+- Achar o **limite de decisão** que separa as classes (binário)
+- Projeção do espaço de características para uma dimensão maior
+  - Funções de núcleo (polinomial, lineares, etc)
+
+## Aprendizado de máquina | *Decision Trees*
+
+- "Cortes" recursivos e repetidos
+  - Cada corte gera um "tronco"
+  - "Folhas" são as classes
+
+## Aprendizado de máquina | *Random Forests*
+
+- Conjunto de Árvores de Decisões
+- Classe será definida pelo "voto" da maioria das árvores da floresta
+  - Previne problema de **alto viés**
+- Cada árvore é treinada com um único subconjunto de teste e variáveis
+  - Uma árvore será menos precisa, porém, menos correlacionada com as outras
+
+# Metodologia
+
+## Dados | MapBiomas
+
+>O projeto MapBiomas é uma iniciativa multi-institucional para gerar mapas anuais de cobertura e uso do solo a partir de processos de classificação automática aplicada a imagens de satélite.
+
+## Dados | Sentinel-2/MSI
+
+- Programa Sentinel
+  - Resolução espacial média (10-30m)
+  - Sensor multiespectral
+  - Dados abertos desde 2013
+
+## Ambientes | R
+
+- Linguagem de paradigmas funcional e orientado a objeto
+- Muito utlizada para análises estatísticas
+- Ambiente integrado com bibliotecas de dados geoespaciais
+- Forte documentaçãoo
+
+## Ambientes | *Google Earth Engine*
+
+- Ambiente de computação em núvem
+- Diversas coleções de dados de satélite
+- Processamento extremamente rápido
+- Utilizado pelo MapBiomas
+
+## Etapas
+
+![]("./monografia/rascunhos/figs/etapas.png")
+
+# Desenvolvimento
+
+## Aquisicao dos Dados | Satélite Sentinel-2
+
+```{r}
+sentinel_bandas <- read.csv("./dados/satelite/sentinel/bandas.csv") 
+
+sentinel_bandas %>% kable() %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
+# 
+# xtable::xtable(sentinel_bandas)
+# sentinel_bandas %>% 
+#   xtable(label = "sentinel-bandas",
+#          caption = "Características das bandas do sensor multiespectral MSI do Satélite Sentinel-2") %>%
+#   print(file = "./saida/tex/table_sentinel-bandas.tex") %>% 
+```
+
+## Aquisicao dos dados | Satélite Sentinel-2
+
+```{r, fig.align='center'}
+sentinel <- raster::brick("./dados/satelite/sentinel/sentinel.tif")
+# pdf("./saida/tex/plot_sentinel-rgb.pdf")
+# raster::plotRGB(sentinel,r=3,g=2,b=1, stretch = "lin")
+# dev.off()
+raster::plotRGB(sentinel,r=3,g=2,b=1, stretch = "lin")
+sp_shp <- st_read("./dados/ibge/35MUE250GC_SIR.shp", quiet = TRUE)
+# bauru_shp <- sp_shp %>%  
+#   filter(NM_MUNICIP == "BAURU")
+# plot(bauru_shp, lwd=2, add=TRUE)
+```
+
+## Aquisição dos dados | Seleção das amostras
+
+```{r}
+samples <- sf::st_read("./saida/shapefile/pontos_amostra_sp.shp", quiet = TRUE)
+
+# pdf("./saida/tex/plot_pontos-amostra.pdf")
+plot(sp_shp$geometry)
+plot(samples, add=TRUE)
+# dev.off()
+```
+
+## Aquisição dos dados | Seleção das amostras
+
+```{r}
+kable(table(samples$CERRADO)) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+
+## Extracao de características | Indice de vegetacao
+
+```{r}
+ndvi <- readRDS("./saida/plots/plot_ndvi.rds")
+
+# pdf("./saida/tex/plot_ndvi.pdf")
+# raster::plot(ndvi, axes = FALSE, box = FALSE)
+# dev.off()
+raster::plot(ndvi, axes = FALSE, box = FALSE)
+
+# RStoolbox::ggR(ndvi)
+# plot(ndvi)
+```
+
+## Extracao de características | Seleção das bandas
+
+```{r}
+bandas <- readRDS("./saida/plots/plot_bandas.rds")
+plot(bandas)
+```
+
+## Reamostragem
+
+```{r}
+amostras_treino <- readRDS("./saida/modelos/amostras_treino.rds")
+amostras_teste <- readRDS("./saida/modelos/amostras_teste.rds")
+kable(table(amostras_treino$Classe), caption = "Amostras para treino") %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+## Reamostragem
+
+```{r}
+kable(table(amostras_teste$Classe), caption = "Amostras para teste") %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+
+
+## Treinamento | SVM Linear
+
+```{r}
+plot_svm_linear <- readRDS("./saida/modelos/plot_svm_linear.rds")
+# pdf("./saida/tex/plot_svm-linear.pdf")
+# dev.off()
+plot_svm_linear
+```
+
+## Treinamento | SVM Radial
+
+```{r}
+plot_svm_radial <- readRDS("./saida/modelos/plot_svm_radial.rds")
+# pdf("./saida/tex/plot_svm-radial.pdf")
+# dev.off()
+plot_svm_radial
+```
+
+## Treinamento | Random Forests
+
+```{r}
+plot_rf <- readRDS("./saida/modelos/plot_rf.rds")
+# pdf("./saida/tex/plot_rf.pdf")
+# dev.off()
+plot_rf
+```
+
+## Predição | SVM Linear
+
+```{r}
+map_svm_linear <- readRDS("./saida/mapas/map_svm_linear.rds")
+# pdf("./saida/tex/map_svm-linear.pdf")
+# dev.off()
+map_svm_linear
+```
+
+## Predição | SVM Radial
+
+```{r}
+map_svm_radial <- readRDS("./saida/mapas/map_svm_radial.rds")
+# pdf("./saida/tex/map_svm-radial.pdf")
+# dev.off()
+map_svm_radial
+```
+
+## Predição | SVM Radial
+
+```{r}
+map_rf <- readRDS("./saida/mapas/map_rf.rds")
+# pdf("./saida/tex/map_rf.pdf")
+# dev.off()
+map_rf
+```
+
+## Mapa de referência | Mapbiomas
+
+```{r}
+map_mapbiomas <- readRDS("./saida/mapas/map_mapbiomas.rds")
+# pdf("./saida/tex/map_mapbiomas.pdf")
+# dev.off()
+map_mapbiomas
+```
+
+## Avaliação de precisão
+
+- Matriz de erro para cada modelo com 100 pontos de amostras de cada classe extraídos do *raster* do MapBiomas
+
+```{r}
+matriz_confusao <- readRDS("./saida/tabelas/confusao.rds")
+kable(matriz_confusao) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+
+## Considerações
+
+- Classes que sofreram confusão (ex: formacao_florestal e floresta_plantada)
+  - Variáveis preditoras insuficientes
+- Classes predominantes na classsificação com MVS radial
+
+# Conclusão
+
+## Conclusão
+
+- Sistemas de Sensoriamento Remoto que permitem imageamento da superfície terrestre
+- Um modelo preditivo bem ajustado depende de uma série de considerações a serem avaliadas
+- Aplicações: Monitoramento de recursos; análises temporais; planejamento urbano; cruzamento de dados; entre outras aplicações
+- Trabalhos futuros: comparação com outra base de dados; seleção de amostras de outras regiões; etapas adicionais de pré processamento e extração de características; utilização de outros algoritmos como Redes Neurais Artificiais
+
+##
+\begin{center}
+Dúvidas?
+\end{center}
+
+##
+\begin{center}
+Obrigado!
+\end{center}

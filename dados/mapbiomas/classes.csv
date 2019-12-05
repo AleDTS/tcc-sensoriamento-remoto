@@ -1,0 +1,28 @@
+,value,color,name.full,name
+1,1,#129912,1. Floresta,floresta
+2,2,#1F4423,    1.1. Floresta Natural,floresta_natural
+3,3,#006400,        1.1.1. Formação Florestal,formacao_florestal
+4,4,#32CD32,        1.1.2. Formação Savanica,formacao_savanica
+5,5,#687537,        1.1.3. Mangue,mangue
+6,9,#935132,    1.2. Floresta Plantada,floresta_plantada
+7,10,#BBFCAC,2. Formação Natural não Florestal,formacao_nat_n_florestal
+8,11,#45C2A5,    2.1. Área Úmida Natural não Florestal,area_umida_nat_n_florestal
+9,12,#B8AF4F,    2.2. Formação Campestre,formacao_campestre
+10,32,#968c46,    2.3. Apicum,apicuim
+11,13,#BDB76B,    2.4. Outra Formação Natural não Florestal,outra_formacao_nat_n_florestao
+12,14,#FFFFB2,3. Agropecuária,agropecuaria
+13,15,#FFD966,    3.1. Pastagem,pastagem
+14,18,#E974ED,    3.2. Agricultura,agricultura
+15,19,#D5A6BD,         3.2.1. Cultura Anual e Perene,cultura_anual_perene
+16,20,#C27BA0,         3.2.2. Cultura Semi-Perene,cultura_semi_perene
+17,21,#FFEFC3,    3.3. Mosaico de Agricultura e Pastagem,agricultura_pastagem
+18,22,#EA9999,4. Área não vegetada,area_n_vegetada
+19,23,#DD7E6B,    4.1. Praia e Duna,praia_duna
+20,24,#af2a2a,    4.2. Infraestrutura Urbana,infra_urbana
+21,29,#FF8C00,    4.3. Afloramento Rochoso,afloramento_rochoso
+22,30,#8A2BE2,    4.4. Mineração,mineracao
+23,25,#FF99FF,    4.4. Outra Área não Vegetada,outra_area_n_vegetada
+24,26,#0000FF,5. Corpos D'água,corpos_dagua
+25,33,#0000FF,"    5.1 Rio, Lago e Oceano",rio_lago_oceano
+26,31,#29EEE4,    5.2 Aquicultura,aquicultura
+27,27,#D5D5E5,6. Não observado,nao_obs

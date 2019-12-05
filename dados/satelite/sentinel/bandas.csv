@@ -1,0 +1,14 @@
+banda,nome,lambda,resolucao
+B1,Aerosol,0.443,60
+B2,Azul,0.49,10
+B3,Verde,0.56,10
+B4,Vermelho,0.665,10
+B8,NIR,0.842,10
+B5,Red edge 1,0.705,20
+B6,Red edge 2,0.74,20
+B7,Red edge 3,0.783,20
+B9,Vapor d’água,0.94,60
+B10,Cirrus,1.375,60
+B11,SWIR 1,1.61,20
+B12,SWIR 2,2.19,20
+B8A,Red edge 4,0.865,20
